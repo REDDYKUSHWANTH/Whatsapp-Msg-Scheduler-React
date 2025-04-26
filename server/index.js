@@ -227,17 +227,6 @@ async function sendEmail(to, subject, text) {
 const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
-// Schedule existing tasks at startup
-(async () => {
-  try {
-    const existing = await Task.find({ paused: false });
-    existing.forEach((t) => scheduleTask(t, client));
-    console.log(`⏰ Scheduled ${existing.length} existing jobs`);
-  } catch (err) {
-    console.error("Error scheduling existing tasks:", err);
-  }
-})();
-
 // Automated pruning: remove media files not referenced by any task every midnight
 schedule.scheduleJob({ hour: 0, minute: 0 }, async () => {
   try {
@@ -336,7 +325,17 @@ mongoose
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => console.log("✅ Connected to MongoDB"))
+  .then(async () => {
+    console.log("✅ Connected to MongoDB");
+    // Schedule existing tasks at startup
+    try {
+      const existing = await Task.find({ paused: false });
+      existing.forEach((t) => scheduleTask(t, client));
+      console.log(`⏰ Scheduled ${existing.length} existing jobs`);
+    } catch (err) {
+      console.error("Error scheduling existing tasks:", err);
+    }
+  })
   .catch((err) => console.error("MongoDB connection error:", err));
 
 app.listen(port, () => {
